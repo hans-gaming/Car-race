@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Car Racing Game</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #000; overflow: hidden; font-family: sans-serif; }
+    #gameArea {
+      width: 400px; height: 600px; margin: 20px auto;
+      background: url('road.jpg') no-repeat center/cover;
+      position: relative; overflow: hidden;
+      border: 2px solid white;
+    }
+    #player {
+      width: 50px; height: 100px;
+      background: url('car1.png') no-repeat center/contain;
+      position: absolute; bottom: 10px; left: 175px;
+    }
+    .enemy {
+      width: 50px; height: 100px;
+      background: url('car2.png') no-repeat center/contain;
+      position: absolute; top: -120px;
+    }
+    .enemy.car3 { background-image: url('car3.png'); }
+
+    #startBtn {
+      position: absolute; top: 40%; left: 50%;
+      transform: translate(-50%, -50%);
+      padding: 20px 40px; background: black; color: white;
+      font-size: 24px; cursor: pointer; border: 2px solid white;
+      z-index: 2;
+    }
+
+    .control-btn {
+      position: absolute; bottom: 20px;
+      width: 60px; height: 60px; background: rgba(255,255,255,0.2);
+      color: white; font-size: 28px; text-align: center;
+      line-height: 60px; border-radius: 50%;
+      display: none; user-select: none;
+    }
+    #leftBtn { left: 20px; }
+    #rightBtn { right: 20px; }
+
+    #scoreBoard {
+      position: absolute; top: 10px; left: 10px; color: white;
+      z-index: 2; font-size: 18px;
+    }
+
+    #countdown {
+      position: absolute; top: 45%; left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 48px; color: yellow; z-index: 2;
+    }
+  </style>
+</head>
+<body>
+
+<div id="gameArea">
+  <div id="startBtn">START</div>
+  <div id="countdown"></div>
+  <div id="scoreBoard">Score: 0<br>Level: 1</div>
+  <div id="player"></div>
+  <div id="leftBtn" class="control-btn">&#8592;</div>
+  <div id="rightBtn" class="control-btn">&#8594;</div>
+</div>
+
+<audio id="engine" src="engine.mp3"></audio>
+<audio id="music" src="music.mp3" loop></audio>
+<audio id="crashSound" src="crash.mp3"></audio>
+
+<script>
+  const startBtn = document.getElementById("startBtn");
+  const player = document.getElementById("player");
+  const gameArea = document.getElementById("gameArea");
+  const leftBtn = document.getElementById("leftBtn");
+  const rightBtn = document.getElementById("rightBtn");
+  const scoreBoard = document.getElementById("scoreBoard");
+  const countdown = document.getElementById("countdown");
+  const engine = document.getElementById("engine");
+  const music = document.getElementById("music");
+  const crashSound = document.getElementById("crashSound");
+
+  let gameInterval, enemyInterval;
+  let playerX = 175;
+  let moveLeft = false, moveRight = false;
+  let score = 0, level = 1, speed = 3;
+
+  function startGame() {
+    startBtn.style.display = "none";
+    countdown.style.display = "block";
+    let count = 3;
+    engine.play();
+    countdown.innerText = count;
+
+    let countdownTimer = setInterval(() => {
+      count--;
+      if (count > 0) {
+        countdown.innerText = count;
+      } else {
+        clearInterval(countdownTimer);
+        countdown.style.display = "none";
+        engine.pause(); engine.currentTime = 0;
+        music.play();
+        leftBtn.style.display = "block";
+        rightBtn.style.display = "block";
+        runGame();
+      }
+    }, 1000);
+  }
+
+  function runGame() {
+    gameInterval = setInterval(() => {
+      if (moveLeft && playerX > 0) playerX -= 6;
+      if (moveRight && playerX < 350) playerX += 6;
+      player.style.left = playerX + "px";
+    }, 20);
+
+    enemyInterval = setInterval(createEnemy, 1500);
+  }
+
+  function createEnemy() {
+    const enemy = document.createElement("div");
+    const lane = Math.floor(Math.random() * 7) * 50;
+    const type = Math.random() > 0.5 ? "car3" : "";
+    enemy.className = `enemy ${type}`;
+    enemy.style.left = lane + "px";
+    gameArea.appendChild(enemy);
+
+    let enemyY = -120;
+    let move = 0;
+    const zigzagMove = (level >= 5);
+
+    const enemyMove = setInterval(() => {
+      enemyY += speed;
+      if (zigzagMove) {
+        move += 0.5;
+        enemy.style.left = (lane + 30 * Math.sin(move)) + "px";
+      }
+      enemy.style.top = enemyY + "px";
+
+      if (checkCollision(player, enemy)) {
+        clearInterval(enemyMove);
+        crashSound.play();
+        music.pause();
+        alert("Game Over! Score: " + score);
+        location.reload();
+      }
+
+      if (enemyY > 600) {
+        clearInterval(enemyMove);
+        enemy.remove();
+        score++;
+        if (score % 10 === 0) {
+          level++;
+          speed += 0.5;
+        }
+        scoreBoard.innerHTML = `Score: ${score}<br>Level: ${level}`;
+      }
+    }, 20);
+  }
+
+  function checkCollision(a, b) {
+    const aRect = a.getBoundingClientRect();
+    const bRect = b.getBoundingClientRect();
+    return !(
+      aRect.bottom < bRect.top ||
+      aRect.top > bRect.bottom ||
+      aRect.right < bRect.left ||
+      aRect.left > bRect.right
+    );
+  }
+
+  startBtn.addEventListener("click", startGame);
+  leftBtn.addEventListener("touchstart", () => moveLeft = true);
+  leftBtn.addEventListener("touchend", () => moveLeft = false);
+  rightBtn.addEventListener("touchstart", () => moveRight = true);
+  rightBtn.addEventListener("touchend", () => moveRight = false);
+</script>
+
+</body>
+</html>
